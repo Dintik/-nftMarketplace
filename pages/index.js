@@ -1,5 +1,5 @@
 /* pages/index.js */
-import { ethers } from "ethers";
+import Web3 from "web3";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Web3Modal from "web3modal";
@@ -17,16 +17,15 @@ export default function Home() {
     }, []);
     async function loadNFTs() {
         /* create a generic provider and query for unsold market items */
-        const provider = new ethers.providers.JsonRpcProvider(
+        const provider = new Web3(
             `https://rinkeby.infura.io/v3/a796c259d5ab450a9f68a197083dbc3e`
         );
-        const tokenContract = new ethers.Contract(nftAdress, NFT.abi, provider);
-        const marketContract = new ethers.Contract(
-            nfMarketAddress,
+        const tokenContract = new provider.eth.Contract(NFT.abi, nftAdress);
+        const marketContract = new provider.eth.Contract(
             Market.abi,
-            provider
+            nfMarketAddress
         );
-        const data = await marketContract.fetchMarketItems();
+        const data = await marketContract.methods.fetchMarketItems().call();
 
         /*
          *  map over items returned from smart contract and format
@@ -34,15 +33,14 @@ export default function Home() {
          */
         const items = await Promise.all(
             data.map(async (i) => {
-                const tokenUri = await tokenContract.tokenURI(i.tokenId);
+                const tokenUri = await tokenContract.methods
+                    .tokenURI(i.tokenId)
+                    .call();
                 const meta = await axios.get(tokenUri);
-                let price = ethers.utils.formatUnits(
-                    i.price.toString(),
-                    "ether"
-                );
+                let price = provider.utils.fromWei(i.price.toString(), "ether");
                 let item = {
                     price,
-                    tokenId: i.tokenId.toNumber(),
+                    tokenId: i.tokenId,
                     seller: i.seller,
                     owner: i.owner,
                     image: meta.data.image,
@@ -59,24 +57,19 @@ export default function Home() {
         /* needs the user to sign the transaction, so will use Web3Provider and sign it */
         const web3Modal = new Web3Modal();
         const connection = await web3Modal.connect();
-        const provider = new ethers.providers.Web3Provider(connection);
-        const signer = provider.getSigner();
-        const contract = new ethers.Contract(
-            nfMarketAddress,
-            Market.abi,
-            signer
-        );
+        const provider = new Web3(connection);
+        const signer = await provider.eth.getAccounts();
+        const contract = new provider.eth.Contract(Market.abi, nfMarketAddress);
 
         /* user will be prompted to pay the asking proces to complete the transaction */
-        const price = ethers.utils.parseUnits(nft.price.toString(), "ether");
-        const transaction = await contract.createMarketSale(
-            nftAdress,
-            nft.tokenId,
-            {
+        const price = provider.utils.toWei(nft.price.toString(), "ether");
+        const transaction = await contract.methods
+            .createMarketSale(nftAdress, nft.tokenId)
+            .send({
+                from: signer[0],
                 value: price,
-            }
-        );
-        await transaction.wait();
+            });
+        await transaction;
         loadNFTs();
     }
     if (loadingState === "loaded" && !nfts.length)
