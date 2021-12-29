@@ -24,6 +24,7 @@ function MyApp({ Component, pageProps }) {
                 </div>
             </nav>
             <Component {...pageProps} />
+            <p className=" font-bold text-center">v1.1.0</p>
         </div>
     );
 }
