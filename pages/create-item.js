@@ -1,6 +1,6 @@
 /* pages/create-item.js */
 import { useState } from "react";
-import { ethers } from "ethers";
+import Web3 from "web3";
 import { create as ipfsHttpClient } from "ipfs-http-client";
 import { useRouter } from "next/router";
 import Web3Modal from "web3modal";
@@ -55,30 +55,36 @@ export default function CreateItem() {
     async function createSale(url) {
         const web3Modal = new Web3Modal();
         const connection = await web3Modal.connect();
-        const provider = new ethers.providers.Web3Provider(connection);
-        const signer = provider.getSigner();
+        const provider = new Web3(connection);
+        const signer = await provider.eth.getAccounts();
 
         /* next, create the item */
-        let contract = new ethers.Contract(nftAdress, NFT.abi, signer);
-        let transaction = await contract.createToken(url);
-        let tx = await transaction.wait();
-        let event = tx.events[0];
-        let value = event.args[2];
-        let tokenId = value.toNumber();
-        const price = ethers.utils.parseUnits(formInput.price, "ether");
+        let contract = new provider.eth.Contract(NFT.abi, nftAdress, {
+            from: signer[0],
+        });
+        let transaction = await contract.methods.createToken(url).send({
+            from: signer[0],
+        });
+        let tx = await transaction;
+        let event = tx.events.Transfer;
+        let value = event.returnValues.tokenId;
+        let tokenId = Number(value);
+        const price = provider.utils.toWei(formInput.price.toString(), "ether");
 
         /* then list the item for sale on the marketplace */
-        contract = new ethers.Contract(nfMarketAddress, Market.abi, signer);
-        let listingPrice = await contract.getListingPrice();
+        contract = new provider.eth.Contract(Market.abi, nfMarketAddress, {
+            from: signer[0],
+        });
+        let listingPrice = await contract.methods.getListingPrice().call();
         listingPrice = listingPrice.toString();
 
-        transaction = await contract.createMarketItem(
-            nftAdress,
-            tokenId,
-            price,
-            { value: listingPrice }
-        );
-        await transaction.wait();
+        transaction = await contract.methods
+            .createMarketItem(nftAdress, tokenId, price)
+            .send({
+                from: signer[0],
+                value: listingPrice,
+            });
+        await transaction;
         router.push("/");
     }
 

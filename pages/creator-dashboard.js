@@ -1,5 +1,5 @@
 /* pages/creator-dashboard.js */
-import { ethers } from "ethers";
+import Web3 from "web3";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Web3Modal from "web3modal";
@@ -19,28 +19,29 @@ export default function CreatorDashboard() {
     async function loadNFTs() {
         const web3Modal = new Web3Modal();
         const connection = await web3Modal.connect();
-        const provider = new ethers.providers.Web3Provider(connection);
-        const signer = provider.getSigner();
+        const provider = new Web3(connection);
+        const signer = await provider.eth.getAccounts();
 
-        const marketContract = new ethers.Contract(
-            nfMarketAddress,
+        const marketContract = new provider.eth.Contract(
             Market.abi,
-            signer
+            nfMarketAddress,
+            {
+                from: signer[0],
+            }
         );
-        const tokenContract = new ethers.Contract(nftAdress, NFT.abi, provider);
-        const data = await marketContract.fetchItemsCreated();
+        const tokenContract = new provider.eth.Contract(NFT.abi, nftAdress);
+        const data = await marketContract.methods.fetchItemsCreated().call();
 
         const items = await Promise.all(
             data.map(async (i) => {
-                const tokenUri = await tokenContract.tokenURI(i.tokenId);
+                const tokenUri = await tokenContract.methods
+                    .tokenURI(i.tokenId)
+                    .call();
                 const meta = await axios.get(tokenUri);
-                let price = ethers.utils.formatUnits(
-                    i.price.toString(),
-                    "ether"
-                );
+                let price = provider.utils.fromWei(i.price.toString(), "ether");
                 let item = {
                     price,
-                    tokenId: i.tokenId.toNumber(),
+                    tokenId: i.tokenId,
                     seller: i.seller,
                     owner: i.owner,
                     sold: i.sold,
