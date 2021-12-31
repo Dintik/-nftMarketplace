@@ -50,8 +50,8 @@ function MyApp({ Component, pageProps }) {
                     <Link href="/creator-dashboard">
                         <a className="mr-6 text-pink-600">Creator Dashboard</a>
                     </Link>
-                    <Link href="/page2">
-                        <a className="mr-6 text-pink-600">Test Page</a>
+                    <Link href="/tokenPage">
+                        <a className="mr-6 text-pink-600">Token Page</a>
                     </Link>
                 </div>
             </nav>
