@@ -32,6 +32,7 @@ export default function Token() {
         );
         const tokenContract = new provider.eth.Contract(NFT.abi, nftAdress);
 
+        const networkName = await provider.eth.net.getNetworkType();
         const data = await marketContract.methods
             .fetchMarketItem(tokenId)
             .call();
@@ -41,32 +42,52 @@ export default function Token() {
                 const tokenUri = await tokenContract.methods
                     .tokenURI(tokenId)
                     .call();
-                const tokenOwner = await tokenContract.methods
+                const owner = await tokenContract.methods
                     .ownerOf(tokenId)
                     .call();
-                const tokenPastEventsApprovalArr =
-                    await tokenContract.getPastEvents("Transfer", {
+                const collectionName = await tokenContract.methods
+                    .name()
+                    .call();
+                const tokenCreatedArr = await tokenContract.getPastEvents(
+                    "Transfer",
+                    {
                         filter: {
                             tokenId: tokenId,
                             from: "0x0000000000000000000000000000000000000000",
                         },
                         fromBlock: 0,
                         toBlock: "latest",
-                    });
-                const tokenPastEventsApproval = tokenPastEventsApprovalArr[0];
+                    }
+                );
+                const itemActivity = await tokenContract.getPastEvents(
+                    "Transfer",
+                    {
+                        filter: {
+                            tokenId: tokenId,
+                        },
+                        fromBlock: 0,
+                        toBlock: "latest",
+                    }
+                );
+                const tokenCreated = tokenCreatedArr[0];
 
                 const meta = await axios.get(tokenUri);
                 let price = provider.utils.fromWei(i.price.toString(), "ether");
                 let item = {
                     price,
-                    tokenId: tokenId,
+                    tokenId,
+                    owner,
+                    networkName,
+                    collectionName,
+                    itemActivity,
                     seller: i.seller,
-                    owner: tokenOwner,
-                    image: meta.data.image,
                     name: meta.data.name,
+                    image: meta.data.image,
                     description: meta.data.description,
+                    creator: tokenCreated.returnValues.to,
+                    contractAddress: tokenCreated.address,
                 };
-                console.log(tokenPastEventsApproval);
+
                 return item;
             })
         );
@@ -94,6 +115,11 @@ export default function Token() {
         loadNFT();
     }
 
+    function ucFirst(str) {
+        if (!str) return str;
+        return str[0].toUpperCase() + str.slice(1);
+    }
+
     if (loadingState === "not-loaded")
         return (
             <h1 className="py-10 px-20 text-3xl">
@@ -114,13 +140,25 @@ export default function Token() {
                         <div className="p-4 border shadow rounded-xl overflow-hidden">
                             <p className="font-bold">Description</p>
                             <br />
-                            <p className="">Created by !!!TODO!!!</p>
+                            {nft?.creator ? (
+                                <p className="opacity-60">
+                                    Created by{" "}
+                                    <a
+                                        href={`/${nft.creator}`}
+                                        className="text-blue-800"
+                                    >
+                                        {nft.creator.slice(2, 8)}
+                                    </a>
+                                </p>
+                            ) : (
+                                ""
+                            )}
                             <p className="">{nft?.description}</p>
                         </div>
                         <br />
                         <div className="p-4 border shadow rounded-xl overflow-hidden">
                             <p className="font-bold">
-                                About Metaverse Tokens - !!!TODO!!!
+                                About {nft?.collectionName} - !!!TODO!!!
                             </p>
                             <br />
                             <p className="">!!!TODO!!!</p>
@@ -128,16 +166,37 @@ export default function Token() {
                         <br />
                         <div className="p-4 border shadow rounded-xl overflow-hidden">
                             <p className="font-bold">Details</p>
-                            <p className="font-bold">
-                                Contract Address - !!!TODO!!!
+                            <br />
+
+                            {nft?.contractAddress ? (
+                                <p className="flex justify-between">
+                                    Contract Address
+                                    <span>
+                                        <a
+                                            href={`https://rinkeby.etherscan.io/address/${nft.contractAddress}`}
+                                            target="_blank"
+                                            className="text-blue-600"
+                                        >
+                                            {nft.contractAddress.slice(0, 6)}...
+                                            {nft.contractAddress.slice(38)}
+                                        </a>
+                                    </span>
+                                </p>
+                            ) : (
+                                ""
+                            )}
+
+                            <p className="flex justify-between">
+                                Token ID
+                                <span>{nft?.tokenId}</span>
                             </p>
-                            <p className="font-bold">
-                                Token ID - {nft?.tokenId}
+                            <p className="flex justify-between">
+                                Token Standard <span>ERC-721</span>
                             </p>
-                            <p className="font-bold">
-                                Token Standard - !!!TODO!!!
+                            <p className="flex justify-between">
+                                Blockchain{" "}
+                                <span>{ucFirst(nft?.networkName)}</span>
                             </p>
-                            <p className="font-bold">Blockchain - !!!TODO!!!</p>
                         </div>
                     </div>
                     <div className="py-6">
@@ -159,7 +218,6 @@ export default function Token() {
                             ) : (
                                 ""
                             )}
-                            , !!!TODO!!! view
                         </p>
                         <br />
                         <div className="p-4 border shadow rounded-xl overflow-hidden">
@@ -169,7 +227,7 @@ export default function Token() {
                             <p className="font-bold">{nft?.price} ETH</p>
                             <button
                                 disabled={nft?.price == 0}
-                                className={`bg-blue-600 text-white font-bold py-2 px-12 rounded opasity ${
+                                className={`bg-blue-600 text-white font-bold py-2 px-12 rounded ${
                                     nft?.price == 0 && "opacity-50"
                                 }`}
                                 onClick={() => buyNft(nft)}
@@ -207,10 +265,6 @@ export default function Token() {
                                         ""
                                     )}
                                 </div>
-                                <div>!!!TODO!!!</div>
-                                <div>!!!TODO!!!</div>
-                                <div>!!!TODO!!!</div>
-                                <div>!!!TODO!!!</div>
                             </div>
                         </div>
                         <br />
@@ -219,6 +273,68 @@ export default function Token() {
                             <br />
                             <p className="font-bold">!!!TODO!!!</p>
                         </div>
+                    </div>
+                </div>
+                <br />
+                <div className="pl-4 ">
+                    <div className="p-4 border shadow rounded-xl overflow-hidden">
+                        <p className="font-bold">Item Activity</p>
+                        <br />
+
+                        <div className="grid grid-cols-5 gap-4 px-4 border py-2">
+                            <div>Event</div>
+                            <div>Price</div>
+                            <div>From</div>
+                            <div>To</div>
+                            <div>Date</div>
+                        </div>
+
+                        {nft?.itemActivity.map((event, i) => (
+                            <div
+                                key={i}
+                                className="grid grid-cols-5 gap-4 border  p-4"
+                            >
+                                {console.log(event)}
+                                <div>{event?.event}</div>
+                                <div>!!!TODO!!!</div>
+                                <div>
+                                    {event?.returnValues?.from ? (
+                                        <a
+                                            href={`/${event.returnValues.from}`}
+                                            className="text-blue-600"
+                                        >
+                                            {event.returnValues.from.slice(
+                                                2,
+                                                8
+                                            )}
+                                        </a>
+                                    ) : (
+                                        ""
+                                    )}
+                                </div>
+                                <div>
+                                    {event?.returnValues?.to ? (
+                                        <a
+                                            href={`/${event.returnValues.to}`}
+                                            className="text-blue-600"
+                                        >
+                                            {event.returnValues.to.slice(2, 8)}
+                                        </a>
+                                    ) : (
+                                        ""
+                                    )}
+                                </div>
+                                <div>!!!TODO!!!</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <br />
+                <div className="pl-4 pb-10">
+                    <div className="p-4 border shadow rounded-xl overflow-hidden">
+                        <p className="font-bold">More From This Collection</p>
+                        <br />
+                        <p className="font-bold">!!!TODO!!!</p>
                     </div>
                 </div>
             </div>

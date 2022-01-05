@@ -12,18 +12,18 @@ function MyApp({ Component, pageProps }) {
         loadNFTs();
     }, []);
     async function loadNFTs() {
-        const web3Modal2 = new Web3Modal();
-        const connection2 = await web3Modal2.connect();
-        const provider2 = new Web3(connection2);
+        const web3Modal = new Web3Modal();
+        const connection = await web3Modal.connect();
+        const provider = new Web3(connection);
 
-        const signer = await provider2.eth.getAccounts();
-        const signerBalance = await provider2.eth.getBalance(signer[0]);
-        const signerBalanceEth = provider2.utils.fromWei(signerBalance);
+        const signer = await provider.eth.getAccounts();
+        const signerBalance = await provider.eth.getBalance(signer[0]);
+        const signerBalanceEth = provider.utils.fromWei(signerBalance);
         const signerBalanceEthFloor =
             Math.floor(signerBalanceEth * 10000) / 10000;
 
-        const networkId = await provider2.eth.net.getId();
-        const networkName = await provider2.eth.net.getNetworkType();
+        const networkId = await provider.eth.net.getId();
+        const networkName = await provider.eth.net.getNetworkType();
         setNetworkId(networkId);
         setNetworkName(networkName);
         setBalance(signerBalanceEthFloor);
