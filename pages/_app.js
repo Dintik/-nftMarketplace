@@ -61,7 +61,9 @@ function MyApp({ Component, pageProps }) {
                 `Your wallet is connected to the ${networkName} network. Please switch to Rinkeby`
             )}
 
-            <p className=" font-bold text-center">v1.1.0</p>
+            <p className="bg-blue-600 p-6 font-bold text-center text-white">
+                v1.1.0
+            </p>
         </div>
     );
 }

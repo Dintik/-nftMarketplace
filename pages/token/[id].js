@@ -39,28 +39,43 @@ export default function Token() {
         const itemArr = await Promise.all(
             data.map(async (i) => {
                 const tokenUri = await tokenContract.methods
-                    .tokenURI(i.tokenId)
+                    .tokenURI(tokenId)
                     .call();
+                const tokenOwner = await tokenContract.methods
+                    .ownerOf(tokenId)
+                    .call();
+                const tokenPastEventsApprovalArr =
+                    await tokenContract.getPastEvents("Transfer", {
+                        filter: {
+                            tokenId: tokenId,
+                            from: "0x0000000000000000000000000000000000000000",
+                        },
+                        fromBlock: 0,
+                        toBlock: "latest",
+                    });
+                const tokenPastEventsApproval = tokenPastEventsApprovalArr[0];
+
                 const meta = await axios.get(tokenUri);
                 let price = provider.utils.fromWei(i.price.toString(), "ether");
                 let item = {
                     price,
-                    tokenId: i.tokenId,
+                    tokenId: tokenId,
                     seller: i.seller,
-                    owner: i.owner,
+                    owner: tokenOwner,
                     image: meta.data.image,
                     name: meta.data.name,
                     description: meta.data.description,
                 };
+                console.log(tokenPastEventsApproval);
                 return item;
             })
         );
 
         const item = await itemArr[0];
-
         setNft(item);
         setLoadingState("loaded");
     }
+
     async function buyNft(nft) {
         const web3Modal = new Web3Modal();
         const connection = await web3Modal.connect();
@@ -76,60 +91,134 @@ export default function Token() {
                 value: price,
             });
         await transaction;
-        loadNFTs();
+        loadNFT();
     }
+
+    if (loadingState === "not-loaded")
+        return (
+            <h1 className="py-10 px-20 text-3xl">
+                Loading in progress, please wait
+            </h1>
+        );
     if (loadingState === "loaded" && !nft)
-        return <h1 className="py-10 px-20 text-3xl">No assets owned</h1>;
+        return <h1 className="py-10 px-20 text-3xl">No assets</h1>;
     return (
         <div className="flex justify-center">
-            <div className="p-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
-                    <div className="border shadow rounded-xl overflow-hidden">
-                        <div className="p-4 bg-black">
-                            <p className="text-2xl font-bold text-white">
-                                Price - {nft.price} Eth
+            <div className="px-40 pt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2 pt-2">
+                    <div className="p-4">
+                        <div className="border shadow rounded-xl overflow-hidden">
+                            <img src={nft?.image} className="rounded" />
+                        </div>
+                        <br />
+                        <div className="p-4 border shadow rounded-xl overflow-hidden">
+                            <p className="font-bold">Description</p>
+                            <br />
+                            <p className="">Created by !!!TODO!!!</p>
+                            <p className="">{nft?.description}</p>
+                        </div>
+                        <br />
+                        <div className="p-4 border shadow rounded-xl overflow-hidden">
+                            <p className="font-bold">
+                                About Metaverse Tokens - !!!TODO!!!
                             </p>
-                            <button
-                                className="w-full bg-pink-500 text-white font-bold py-2 px-12 rounded"
-                                onClick={() => buyNft(nft)}
-                            >
-                                Buy
-                            </button>
+                            <br />
+                            <p className="">!!!TODO!!!</p>
+                        </div>
+                        <br />
+                        <div className="p-4 border shadow rounded-xl overflow-hidden">
+                            <p className="font-bold">Details</p>
+                            <p className="font-bold">
+                                Contract Address - !!!TODO!!!
+                            </p>
+                            <p className="font-bold">
+                                Token ID - {nft?.tokenId}
+                            </p>
+                            <p className="font-bold">
+                                Token Standard - !!!TODO!!!
+                            </p>
+                            <p className="font-bold">Blockchain - !!!TODO!!!</p>
                         </div>
                     </div>
-                    <div className="border shadow rounded-xl overflow-hidden">
-                        <img src={nft.image} className="rounded" />
-                    </div>
-                    <div className="border shadow rounded-xl overflow-hidden">
-                        <p className="text-2xl font-bold">Details</p>
-                        <p className="text-2xl font-bold">
-                            Contract Address - {nft.price}
+                    <div className="py-6">
+                        <p className="">Metaverse Tokens - !!!TODO!!!</p>
+                        <br />
+                        <p className="text-2xl font-bold">{nft?.name}</p>
+                        <br />
+                        <p className="">
+                            {nft?.owner ? (
+                                <span>
+                                    Owned by{" "}
+                                    <a
+                                        href={`/${nft.owner}`}
+                                        className="text-blue-600"
+                                    >
+                                        {nft.owner.slice(2, 8)}
+                                    </a>
+                                </span>
+                            ) : (
+                                ""
+                            )}
+                            , !!!TODO!!! view
                         </p>
-                        <p className="text-2xl font-bold">
-                            Token ID - {nft.tokenId}
-                        </p>
-                        <p className="text-2xl font-bold">
-                            Token Standard - {nft.price}
-                        </p>
-                        <p className="text-2xl font-bold">
-                            Blockchain - {nft.price}
-                        </p>
-                    </div>
-                    <div className="border shadow rounded-xl overflow-hidden">
-                        <p className="text-2xl font-bold">Lisings</p>
-                        <p className="text-2xl font-bold">{nft.price} ETH</p>
-                        <p className="text-2xl font-bold">
-                            {nft.price}
-                            USD Price
-                        </p>
-                        <p className="text-2xl font-bold">
-                            {nft.price}
-                            Expiration
-                        </p>
-                        <p className="text-2xl font-bold">
-                            {nft.price}
-                            From
-                        </p>
+                        <br />
+                        <div className="p-4 border shadow rounded-xl overflow-hidden">
+                            <p className="">Sale ends !!!TODO!!!</p>
+                            <br />
+                            <p className="">Current price</p>
+                            <p className="font-bold">{nft?.price} ETH</p>
+                            <button
+                                disabled={nft?.price == 0}
+                                className={`bg-blue-600 text-white font-bold py-2 px-12 rounded opasity ${
+                                    nft?.price == 0 && "opacity-50"
+                                }`}
+                                onClick={() => buyNft(nft)}
+                            >
+                                Buy now
+                            </button>
+                        </div>
+                        <br />
+                        <div className="p-4 border shadow rounded-xl overflow-hidden">
+                            <p className="font-bold">Price History</p>
+                            <br />
+                            <p className="font-bold">!!!TODO!!!</p>
+                        </div>
+                        <br />
+                        <div className="p-4 border shadow rounded-xl overflow-hidden">
+                            <p className="font-bold">Lisings</p>
+                            <br />
+                            <div className="grid grid-cols-4 gap-4">
+                                <div>Price</div>
+                                <div>USD Price</div>
+                                <div>Expiration</div>
+                                <div>From</div>
+                                <div>{nft?.price} ETH</div>
+                                <div>!!!TODO!!!</div>
+                                <div>!!!TODO!!!</div>
+                                <div>
+                                    {nft?.seller ? (
+                                        <a
+                                            href={`/${nft.seller}`}
+                                            className="text-blue-600"
+                                        >
+                                            {nft.seller.slice(2, 8)}
+                                        </a>
+                                    ) : (
+                                        ""
+                                    )}
+                                </div>
+                                <div>!!!TODO!!!</div>
+                                <div>!!!TODO!!!</div>
+                                <div>!!!TODO!!!</div>
+                                <div>!!!TODO!!!</div>
+                            </div>
+                        </div>
+                        <br />
+                        <div className="p-4 border shadow rounded-xl overflow-hidden">
+                            <p className="font-bold">Offers</p>
+                            <br />
+                            <p className="font-bold">!!!TODO!!!</p>
+                        </div>
                     </div>
                 </div>
             </div>
