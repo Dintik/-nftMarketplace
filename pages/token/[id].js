@@ -14,6 +14,7 @@ export default function Token() {
     const router = useRouter();
     const tokenId = router?.query?.id;
     const [nft, setNft] = useState({});
+    const [signer, setSigner] = useState("");
     const [loadingState, setLoadingState] = useState("not-loaded");
     useEffect(() => {
         loadNFT();
@@ -22,12 +23,12 @@ export default function Token() {
         const web3Modal = new Web3Modal();
         const connection = await web3Modal.connect();
         const provider = new Web3(connection);
-        const signer = await provider.eth.getAccounts();
+        const signerArr = await provider.eth.getAccounts();
         const marketContract = new provider.eth.Contract(
             Market.abi,
             nfMarketAddress,
             {
-                from: signer[0],
+                from: signerArr[0],
             }
         );
         const tokenContract = new provider.eth.Contract(NFT.abi, nftAdress);
@@ -48,6 +49,7 @@ export default function Token() {
                 const collectionName = await tokenContract.methods
                     .name()
                     .call();
+                const meta = await axios.get(tokenUri);
                 const tokenCreatedArr = await tokenContract.getPastEvents(
                     "Transfer",
                     {
@@ -59,7 +61,7 @@ export default function Token() {
                         toBlock: "latest",
                     }
                 );
-                const itemActivity = await tokenContract.getPastEvents(
+                const itemActivityArr = await tokenContract.getPastEvents(
                     "Transfer",
                     {
                         filter: {
@@ -71,7 +73,33 @@ export default function Token() {
                 );
                 const tokenCreated = tokenCreatedArr[0];
 
-                const meta = await axios.get(tokenUri);
+                const activityArr = await Promise.all(
+                    itemActivityArr.map(async (event) => {
+                        const from = event?.returnValues?.from;
+                        const to = event?.returnValues?.to;
+                        const eventName = event?.event;
+                        const block = await provider?.eth?.getBlock(
+                            event.blockNumber
+                        );
+                        const tx = event.transactionHash;
+                        const timestamp = block.timestamp;
+                        const date = new Date(
+                            timestamp * 1000
+                        ).toLocaleDateString("en-US");
+
+                        let activity = {
+                            from,
+                            to,
+                            eventName,
+                            date,
+                            tx,
+                        };
+
+                        return activity;
+                    })
+                );
+                activityArr.reverse();
+
                 let price = provider.utils.fromWei(i.price.toString(), "ether");
                 let item = {
                     price,
@@ -79,7 +107,7 @@ export default function Token() {
                     owner,
                     networkName,
                     collectionName,
-                    itemActivity,
+                    activityArr,
                     seller: i.seller,
                     name: meta.data.name,
                     image: meta.data.image,
@@ -93,6 +121,7 @@ export default function Token() {
         );
 
         const item = await itemArr[0];
+        setSigner(signerArr[0]);
         setNft(item);
         setLoadingState("loaded");
     }
@@ -101,14 +130,14 @@ export default function Token() {
         const web3Modal = new Web3Modal();
         const connection = await web3Modal.connect();
         const provider = new Web3(connection);
-        const signer = await provider.eth.getAccounts();
+        const signerArr = await provider.eth.getAccounts();
         const contract = new provider.eth.Contract(Market.abi, nfMarketAddress);
 
         const price = provider.utils.toWei(nft.price.toString(), "ether");
         const transaction = await contract.methods
             .createMarketSale(nftAdress, nft.tokenId)
             .send({
-                from: signer[0],
+                from: signerArr[0],
                 value: price,
             });
         await transaction;
@@ -118,6 +147,22 @@ export default function Token() {
     function ucFirst(str) {
         if (!str) return str;
         return str[0].toUpperCase() + str.slice(1);
+    }
+    function whatAddress(address) {
+        if (!address) return address;
+        if (address === signer) return "you";
+        if (address === nfMarketAddress) return "Market";
+        if (address === "0x0000000000000000000000000000000000000000")
+            return "NullAddress";
+        return address.slice(2, 8);
+    }
+    function getEventName(eventName, from, to) {
+        if (!eventName) return eventName;
+        if (to === nfMarketAddress) return "List";
+        if (from === nfMarketAddress) return "Buying";
+        if (from === "0x0000000000000000000000000000000000000000")
+            return "Minted";
+        return eventName;
     }
 
     if (loadingState === "not-loaded")
@@ -141,13 +186,13 @@ export default function Token() {
                             <p className="font-bold">Description</p>
                             <br />
                             {nft?.creator ? (
-                                <p className="opacity-60">
+                                <p className="opacity-80">
                                     Created by{" "}
                                     <a
                                         href={`/${nft.creator}`}
                                         className="text-blue-800"
                                     >
-                                        {nft.creator.slice(2, 8)}
+                                        {whatAddress(nft.creator)}
                                     </a>
                                 </p>
                             ) : (
@@ -209,10 +254,10 @@ export default function Token() {
                                 <span>
                                     Owned by{" "}
                                     <a
-                                        href={`/${nft.owner}`}
+                                        href={`https://rinkeby.etherscan.io/address/${nft.owner}`}
                                         className="text-blue-600"
                                     >
-                                        {nft.owner.slice(2, 8)}
+                                        {whatAddress(nft.owner)}
                                     </a>
                                 </span>
                             ) : (
@@ -256,10 +301,10 @@ export default function Token() {
                                 <div>
                                     {nft?.seller ? (
                                         <a
-                                            href={`/${nft.seller}`}
+                                            href={`https://rinkeby.etherscan.io/address/${nft.seller}`}
                                             className="text-blue-600"
                                         >
-                                            {nft.seller.slice(2, 8)}
+                                            {whatAddress(nft.seller)}
                                         </a>
                                     ) : (
                                         ""
@@ -289,42 +334,55 @@ export default function Token() {
                             <div>Date</div>
                         </div>
 
-                        {nft?.itemActivity.map((event, i) => (
+                        {nft?.activityArr.map((activity, i) => (
                             <div
                                 key={i}
-                                className="grid grid-cols-5 gap-4 border  p-4"
+                                className="grid grid-cols-5 gap-4 border p-4"
                             >
-                                {console.log(event)}
-                                <div>{event?.event}</div>
+                                <div>
+                                    {getEventName(
+                                        activity?.eventName,
+                                        activity?.from,
+                                        activity?.to
+                                    )}
+                                </div>
                                 <div>!!!TODO!!!</div>
                                 <div>
-                                    {event?.returnValues?.from ? (
+                                    {activity?.from ? (
                                         <a
-                                            href={`/${event.returnValues.from}`}
+                                            href={`https://rinkeby.etherscan.io/address/${activity.from}`}
                                             className="text-blue-600"
                                         >
-                                            {event.returnValues.from.slice(
-                                                2,
-                                                8
-                                            )}
+                                            {whatAddress(activity.from)}
                                         </a>
                                     ) : (
                                         ""
                                     )}
                                 </div>
                                 <div>
-                                    {event?.returnValues?.to ? (
+                                    {activity?.to ? (
                                         <a
-                                            href={`/${event.returnValues.to}`}
+                                            href={`https://rinkeby.etherscan.io/address/${activity.to}`}
                                             className="text-blue-600"
                                         >
-                                            {event.returnValues.to.slice(2, 8)}
+                                            {whatAddress(activity.to)}
                                         </a>
                                     ) : (
                                         ""
                                     )}
                                 </div>
-                                <div>!!!TODO!!!</div>
+                                <div>
+                                    {activity?.date && activity?.tx ? (
+                                        <a
+                                            href={`https://rinkeby.etherscan.io/tx/${activity.tx}`}
+                                            className="text-blue-600"
+                                        >
+                                            {activity?.date}
+                                        </a>
+                                    ) : (
+                                        ""
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
