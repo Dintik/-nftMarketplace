@@ -1,9 +1,11 @@
 /* pages/my-assets.js */
+import React from "react";
 import Web3 from "web3";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Web3Modal from "web3modal";
 import { useRouter } from "next/router";
+import Link from "next/link";
 
 import { nftAdress, nfMarketAddress } from "../../config";
 
@@ -14,12 +16,17 @@ export default function Token() {
     const router = useRouter();
     const tokenId = router?.query?.id;
     const [nft, setNft] = useState({});
+    const [othersNfts, setOthersNfts] = useState({});
     const [signer, setSigner] = useState("");
+    const [transferIput, setTransferIput] = useState(false);
     const [loadingState, setLoadingState] = useState("not-loaded");
+    const [formInput, updateFormInput] = useState("");
     useEffect(() => {
         loadNFT();
-    }, []);
+    }, [tokenId, nft]);
+
     async function loadNFT() {
+        console.log("render");
         const web3Modal = new Web3Modal();
         const connection = await web3Modal.connect();
         const provider = new Web3(connection);
@@ -33,10 +40,28 @@ export default function Token() {
         );
         const tokenContract = new provider.eth.Contract(NFT.abi, nftAdress);
 
+        const NftsLengt = await tokenContract.methods.totalSupply().call();
+
+        const itemsOther = [];
+
         const networkName = await provider.eth.net.getNetworkType();
         const data = await marketContract.methods
             .fetchMarketItem(tokenId)
             .call();
+        const collectionName = await tokenContract.methods.name().call();
+
+        for (let i = 0; i < NftsLengt; i++) {
+            const tokenUri = await tokenContract.methods.tokenURI(i + 1).call();
+            const meta = await axios.get(tokenUri);
+            let item = {
+                tokenId: i + 1,
+                image: meta.data.image,
+                name: meta.data.name,
+                description: meta.data.description,
+                collectionName,
+            };
+            Number(tokenId) !== Number(item.tokenId) && itemsOther.push(item);
+        }
 
         const itemArr = await Promise.all(
             data.map(async (i) => {
@@ -45,9 +70,6 @@ export default function Token() {
                     .call();
                 const owner = await tokenContract.methods
                     .ownerOf(tokenId)
-                    .call();
-                const collectionName = await tokenContract.methods
-                    .name()
                     .call();
                 const meta = await axios.get(tokenUri);
                 const tokenCreatedArr = await tokenContract.getPastEvents(
@@ -99,7 +121,6 @@ export default function Token() {
                     })
                 );
                 activityArr.reverse();
-
                 let price = provider.utils.fromWei(i.price.toString(), "ether");
                 let item = {
                     price,
@@ -123,6 +144,7 @@ export default function Token() {
         const item = await itemArr[0];
         setSigner(signerArr[0]);
         setNft(item);
+        setOthersNfts(itemsOther);
         setLoadingState("loaded");
     }
 
@@ -132,7 +154,6 @@ export default function Token() {
         const provider = new Web3(connection);
         const signerArr = await provider.eth.getAccounts();
         const contract = new provider.eth.Contract(Market.abi, nfMarketAddress);
-
         const price = provider.utils.toWei(nft.price.toString(), "ether");
         const transaction = await contract.methods
             .createMarketSale(nftAdress, nft.tokenId)
@@ -144,10 +165,30 @@ export default function Token() {
         loadNFT();
     }
 
+    async function transferNft() {
+        if (!transferIput) {
+            return setTransferIput(true);
+        }
+
+        const web3Modal = new Web3Modal();
+        const connection = await web3Modal.connect();
+        const provider = new Web3(connection);
+        const signerArr = await provider.eth.getAccounts();
+        const tokenContract = new provider.eth.Contract(NFT.abi, nftAdress);
+        const transfer = await tokenContract.methods
+            .transferFrom(signerArr[0], formInput, tokenId)
+            .send({
+                from: signerArr[0],
+            });
+        await transfer;
+        loadNFT();
+    }
+
     function ucFirst(str) {
         if (!str) return str;
         return str[0].toUpperCase() + str.slice(1);
     }
+
     function whatAddress(address) {
         if (!address) return address;
         if (address === signer) return "you";
@@ -156,6 +197,7 @@ export default function Token() {
             return "NullAddress";
         return address.slice(2, 8);
     }
+
     function getEventName(eventName, from, to) {
         if (!eventName) return eventName;
         if (to === nfMarketAddress) return "List";
@@ -171,8 +213,10 @@ export default function Token() {
                 Loading in progress, please wait
             </h1>
         );
+
     if (loadingState === "loaded" && !nft)
         return <h1 className="py-10 px-20 text-3xl">No assets</h1>;
+
     return (
         <div className="flex justify-center">
             <div className="px-40 pt-4">
@@ -245,7 +289,30 @@ export default function Token() {
                         </div>
                     </div>
                     <div className="py-6">
-                        <p className="">Metaverse Tokens - !!!TODO!!!</p>
+                        <div className="flex justify-between">
+                            <p className="">
+                                {nft?.collectionName} - !!!TODO!!!
+                            </p>
+                            <button
+                                disabled={signer !== nft?.owner}
+                                className={`bg-blue-600 text-white font-bold py-2 px-6 rounded ${
+                                    signer !== nft?.owner && "opacity-50"
+                                }`}
+                                onClick={() => transferNft(nft)}
+                            >
+                                Transfer
+                            </button>
+                        </div>
+                        {transferIput && (
+                            <input
+                                placeholder="Enter the recipient's address"
+                                className="w-full mt-2 border rounded p-4"
+                                onChange={(e) =>
+                                    updateFormInput(e.target.value)
+                                }
+                            />
+                        )}
+
                         <br />
                         <p className="text-2xl font-bold">{nft?.name}</p>
                         <br />
@@ -255,6 +322,7 @@ export default function Token() {
                                     Owned by{" "}
                                     <a
                                         href={`https://rinkeby.etherscan.io/address/${nft.owner}`}
+                                        target="_blank"
                                         className="text-blue-600"
                                     >
                                         {whatAddress(nft.owner)}
@@ -290,27 +358,32 @@ export default function Token() {
                         <div className="p-4 border shadow rounded-xl overflow-hidden">
                             <p className="font-bold">Lisings</p>
                             <br />
-                            <div className="grid grid-cols-4 gap-4">
-                                <div>Price</div>
-                                <div>USD Price</div>
-                                <div>Expiration</div>
-                                <div>From</div>
-                                <div>{nft?.price} ETH</div>
-                                <div>!!!TODO!!!</div>
-                                <div>!!!TODO!!!</div>
-                                <div>
-                                    {nft?.seller ? (
-                                        <a
-                                            href={`https://rinkeby.etherscan.io/address/${nft.seller}`}
-                                            className="text-blue-600"
-                                        >
-                                            {whatAddress(nft.seller)}
-                                        </a>
-                                    ) : (
-                                        ""
-                                    )}
+                            {whatAddress(nft.seller) !== "NullAddress" ? (
+                                <div className="grid grid-cols-4 gap-4">
+                                    <div>Price</div>
+                                    <div>USD Price</div>
+                                    <div>Expiration</div>
+                                    <div>From</div>
+                                    <div>{nft?.price} ETH</div>
+                                    <div>!!!TODO!!!</div>
+                                    <div>!!!TODO!!!</div>
+                                    <div>
+                                        {nft?.seller ? (
+                                            <a
+                                                href={`https://rinkeby.etherscan.io/address/${nft.seller}`}
+                                                target="_blank"
+                                                className="text-blue-600"
+                                            >
+                                                {whatAddress(nft.seller)}
+                                            </a>
+                                        ) : (
+                                            ""
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <p className="">No listings yet</p>
+                            )}
                         </div>
                         <br />
                         <div className="p-4 border shadow rounded-xl overflow-hidden">
@@ -351,6 +424,7 @@ export default function Token() {
                                     {activity?.from ? (
                                         <a
                                             href={`https://rinkeby.etherscan.io/address/${activity.from}`}
+                                            target="_blank"
                                             className="text-blue-600"
                                         >
                                             {whatAddress(activity.from)}
@@ -363,6 +437,7 @@ export default function Token() {
                                     {activity?.to ? (
                                         <a
                                             href={`https://rinkeby.etherscan.io/address/${activity.to}`}
+                                            target="_blank"
                                             className="text-blue-600"
                                         >
                                             {whatAddress(activity.to)}
@@ -375,6 +450,7 @@ export default function Token() {
                                     {activity?.date && activity?.tx ? (
                                         <a
                                             href={`https://rinkeby.etherscan.io/tx/${activity.tx}`}
+                                            target="_blank"
                                             className="text-blue-600"
                                         >
                                             {activity?.date}
@@ -392,7 +468,46 @@ export default function Token() {
                     <div className="p-4 border shadow rounded-xl overflow-hidden">
                         <p className="font-bold">More From This Collection</p>
                         <br />
-                        <p className="font-bold">!!!TODO!!!</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 p-2">
+                            {othersNfts?.length ? (
+                                othersNfts.map((nft, i) => (
+                                    <div
+                                        key={i}
+                                        className="border shadow rounded-xl overflow-hidden"
+                                    >
+                                        <img
+                                            className="h-44 w-full object-cover"
+                                            src={nft.image}
+                                        />
+                                        <div className="p-4">
+                                            <p className="font-semibold">
+                                                {nft.name}
+                                            </p>
+                                            <p className="font-bold">
+                                                {nft?.collectionName}
+                                            </p>
+                                        </div>
+                                        <div className="p-4 pt-2 text-center">
+                                            <Link
+                                                href={{
+                                                    pathname: "/token/[id]",
+                                                }}
+                                                as={`/token/${nft.tokenId}`}
+                                                tokenId={nft.tokenId}
+                                            >
+                                                <a className="block w-full bg-blue-600 text-white font-bold py-2 rounded">
+                                                    Open
+                                                </a>
+                                            </Link>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="">
+                                    There are no other nfts in this collection
+                                </p>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

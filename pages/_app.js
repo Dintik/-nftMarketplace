@@ -62,7 +62,7 @@ function MyApp({ Component, pageProps }) {
             )}
 
             <p className="bg-blue-600 p-6 font-bold text-center text-white">
-                v1.1.0
+                v1.0.0
             </p>
         </div>
     );

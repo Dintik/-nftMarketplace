@@ -35,15 +35,6 @@ export default function Home() {
             allItems.push(item);
         }
 
-        // console.log(await tokenContract.methods.tokenURI(1).call());
-        // console.log(
-        //     await tokenContract.getPastEvents("Transfer", {
-        //         filter: {
-        //             _from: "0x0000000000000000000000000000000000000000",
-        //         },
-        //         fromBlock: 0,
-        //     })
-        // );
         setNftsAll(allItems);
         setLoadingState("loaded");
     }
@@ -86,7 +77,6 @@ export default function Home() {
                                 <Link
                                     href={{
                                         pathname: "/token/[id]",
-                                        query: { name: "leangchhean" },
                                     }}
                                     as={`/token/${nft.tokenId}`}
                                     tokenId={nft.tokenId}
