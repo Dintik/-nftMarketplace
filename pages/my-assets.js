@@ -62,7 +62,7 @@ export default function MyAssets() {
                             key={i}
                             className="border shadow rounded-xl overflow-hidden"
                         >
-                            <img src={nft.image} className="rounded" />
+                            <img src={nft.image} alt={""} className="rounded" />
                             <div className="p-4 bg-black">
                                 <p className="text-2xl font-bold text-white">
                                     Price - {nft.price} Eth

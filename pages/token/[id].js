@@ -223,7 +223,11 @@ export default function Token() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2 pt-2">
                     <div className="p-4">
                         <div className="border shadow rounded-xl overflow-hidden">
-                            <img src={nft?.image} className="rounded" />
+                            <img
+                                src={nft?.image}
+                                alt={""}
+                                className="rounded"
+                            />
                         </div>
                         <br />
                         <div className="p-4 border shadow rounded-xl overflow-hidden">
@@ -264,6 +268,7 @@ export default function Token() {
                                         <a
                                             href={`https://rinkeby.etherscan.io/address/${nft.contractAddress}`}
                                             target="_blank"
+                                            rel="noreferrer"
                                             className="text-blue-600"
                                         >
                                             {nft.contractAddress.slice(0, 6)}...
@@ -323,6 +328,7 @@ export default function Token() {
                                     <a
                                         href={`https://rinkeby.etherscan.io/address/${nft.owner}`}
                                         target="_blank"
+                                        rel="noreferrer"
                                         className="text-blue-600"
                                     >
                                         {whatAddress(nft.owner)}
@@ -372,6 +378,7 @@ export default function Token() {
                                             <a
                                                 href={`https://rinkeby.etherscan.io/address/${nft.seller}`}
                                                 target="_blank"
+                                                rel="noreferrer"
                                                 className="text-blue-600"
                                             >
                                                 {whatAddress(nft.seller)}
@@ -425,6 +432,7 @@ export default function Token() {
                                         <a
                                             href={`https://rinkeby.etherscan.io/address/${activity.from}`}
                                             target="_blank"
+                                            rel="noreferrer"
                                             className="text-blue-600"
                                         >
                                             {whatAddress(activity.from)}
@@ -438,6 +446,7 @@ export default function Token() {
                                         <a
                                             href={`https://rinkeby.etherscan.io/address/${activity.to}`}
                                             target="_blank"
+                                            rel="noreferrer"
                                             className="text-blue-600"
                                         >
                                             {whatAddress(activity.to)}
@@ -451,6 +460,7 @@ export default function Token() {
                                         <a
                                             href={`https://rinkeby.etherscan.io/tx/${activity.tx}`}
                                             target="_blank"
+                                            rel="noreferrer"
                                             className="text-blue-600"
                                         >
                                             {activity?.date}
@@ -478,6 +488,7 @@ export default function Token() {
                                         <img
                                             className="h-44 w-full object-cover"
                                             src={nft.image}
+                                            alt={""}
                                         />
                                         <div className="p-4">
                                             <p className="font-semibold">
