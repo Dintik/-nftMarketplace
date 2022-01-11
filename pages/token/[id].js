@@ -1,7 +1,6 @@
 /* pages/my-assets.js */
-import React from "react";
 import Web3 from "web3";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Web3Modal from "web3modal";
 import { useRouter } from "next/router";
@@ -12,7 +11,7 @@ import { nftAdress, nfMarketAddress } from "../../config";
 import NFT from "../../artifacts/contracts/NFT.sol/NFT.json";
 import Market from "../../artifacts/contracts/NFTMarket.sol/NFTMarket.json";
 
-export default function Token() {
+export default function Token(state) {
     const router = useRouter();
     const tokenId = router?.query?.id;
     const [nft, setNft] = useState({});
@@ -23,10 +22,9 @@ export default function Token() {
     const [formInput, updateFormInput] = useState("");
     useEffect(() => {
         loadNFT();
-    }, [tokenId, nft]);
+    }, [tokenId, state]);
 
     async function loadNFT() {
-        console.log("render");
         const web3Modal = new Web3Modal();
         const connection = await web3Modal.connect();
         const provider = new Web3(connection);
@@ -219,6 +217,7 @@ export default function Token() {
 
     return (
         <div className="flex justify-center">
+            {console.log(state)}
             <div className="px-40 pt-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2 pt-2">
                     <div className="p-4">
